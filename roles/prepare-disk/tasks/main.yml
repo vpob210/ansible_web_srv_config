@@ -1,0 +1,91 @@
+# - name: prepare-disk
+#   hosts: ngx-webserver
+#   become: true
+# #  vars_files:
+# #    - password.yml
+
+
+  # tasks:
+    - name: Получить имена дисков
+      shell: lsblk -n -o NAME,TYPE | grep 'disk' | awk '{print $1}'
+      register: disk_names
+    
+    - block:
+        # - name: Вывести значения переменных для отладки
+        #   debug:
+        #     msg: "Значение disk_names: {{ disk_names.stdout_lines[0] }}, значение ansible_mounts: {{ ansible_mounts[0].device.split('/')[2][0:-1] }}"
+
+        - name: Создать раздел GPT на весь диск
+          parted:
+            device: "/dev/{{ disk_names.stdout_lines[1] }}"  # Выбираем второй диск
+            label: gpt
+            state: present
+            part_start: 0%
+            part_end: 100%
+            number: 1
+
+        - name: Создать файловую систему ext4 на разделе
+          filesystem:
+            fstype: ext4
+            dev: "/dev/{{ disk_names.stdout_lines[1] }}1"
+
+        # - name: Присвоить метку первой партиции
+        #   parted:
+        #     device: "/dev/{{ disk_names.stdout_lines[1] }}"  # Указываем первый раздел второго диска
+        #     number: 1
+        #     label: gpt
+        #     name: ssd-disk
+        #     state: present
+
+        - name: Присвоить метку для всего диска
+          command: e2label /dev/{{ disk_names.stdout_lines[1] }}1 disk-ssd
+
+
+        - name: Создать каталог /data
+          file:
+            path: /data
+            state: directory
+
+        # - name: Монтировать файловую систему в /data
+        #   mount:
+        #     path: /data
+        #     src: "/dev/{{ disk_names.stdout_lines[1] }}1"
+        #     fstype: ext4
+        #     state: mounted
+
+        # - name: Получить UUID раздела
+        #   shell: blkid -s UUID -o value /dev/{{ disk_names.stdout_lines[1] }}1 # lsblk -no UUID /dev/{{ disk_names.stdout_lines[1] }}1
+        #   register: partition_uuid
+
+        # - name: Вывести UUID раздела
+        #   debug:
+        #     var: partition_uuid.stdout
+
+        # - name: Проверить наличие строки в fstab
+        #   shell: grep -q "^UUID={{ partition_uuid.stdout }} /data ext4 defaults 0 0" /etc/fstab
+        #   register: fstab_check
+        #   # ignore_errors: true
+
+        # - name: Записать UUID в fstab
+        #   lineinfile:
+        #     path: /etc/fstab
+        #     line: "UUID={{ partition_uuid.stdout }} /data ext4 defaults 0 0"
+        #     state: present
+        #   #when: fstab_check.rc != 0
+
+        # - name: Add entry to /etc/fstab
+        #   lineinfile:
+        #     path: /etc/fstab
+        #     line: "/dev/disk/by-label/disk-ssd     /data     ext4     defaults        0 0"
+        #     state: present
+
+        # - name: Remount all filesystems
+        #   shell: mount -a
+
+        - name: Mount up device by label
+          ansible.posix.mount:
+            path: /data
+            src: LABEL=disk-ssd # UUID={{ partition_uuid.stdout }} 
+            fstype: ext4
+            state: mounted
+      when: disk_names.stdout_lines[1] != ansible_mounts[0].device.split('/')[2][0:-1]

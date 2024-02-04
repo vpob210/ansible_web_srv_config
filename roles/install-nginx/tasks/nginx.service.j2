@@ -1,0 +1,23 @@
+[Unit]
+Description=Nginx HTTP and proxy server
+# запуск после загрузки службы сети
+After=network.target nss-lookup.target
+
+[Service]
+Type=forking
+User={{ nginx_user }}
+Environment="NGINX_CONF_DIR={{ nginx_conf_dir }}"
+PIDFile=/run/nginx.pid
+#команда проверки конфигурации nginx перед стартом
+ExecStartPre=/usr/local/bin/nginx -t -q -g 'daemon on; master_process on;'
+ExecStart=/usr/local/bin/nginx -g 'daemon on; master_process on;'
+ExecReload=/usr/local/bin/nginx -g 'daemon on; master_process on;' -s reload
+ExecStop=/bin/kill -s TERM $MAINPID
+
+#ExecStop=-/sbin/start-stop-daemon --quiet --stop --retry QUIT/5 --pidfile /run/nginx.pid
+TimeoutStopSec=5
+KillMode=mixed
+
+
+[Install]
+WantedBy=multi-user.target

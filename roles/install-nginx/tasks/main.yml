@@ -1,0 +1,43 @@
+---
+    - name: Check if user exist
+      ansible.builtin.user:
+        name: "{{ nginx_user }}"
+        state: present
+
+    - name: If NGINX_CONF_DIR exists
+      ansible.builtin.file:
+        path: "{{ nginx_conf_dir }}"
+        state: directory
+        owner: "{{ nginx_user }}"
+        mode: "0700"
+
+    - name: Copy nginx config templates
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ nginx_conf_dir }}/{{ item | basename }}"
+        owner: "{{ nginx_user }}"
+        mode: "0600"
+      with_fileglob: "templates/nginx/*"
+
+    - name: Ensure nginx binary directory exists
+      ansible.builtin.file:
+        path: /usr/local/bin/nginx
+        state: directory
+        mode: '0755'
+
+    # - name: Download nginx binary from registry
+    #   ansible.builtin.get_url:
+    #     url: "{{ nginx_registry_url }}/nginx_1.0.0"
+    #     dest: /usr/local/bin/nginx
+    #     mode: '0755'
+
+    # - name: Create systemd service for nginx
+    #   ansible.builtin.template:
+    #     src: nginx.service.j2
+    #     dest: /etc/systemd/system/nginx.service
+
+    # - name: Reload demon
+    #   ansible.builtin.systemd:
+    #     daemon_reload: yes
+    #     state: restarted
+    #     name: nginx

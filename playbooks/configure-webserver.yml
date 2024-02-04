@@ -1,0 +1,12 @@
+---
+- name: Configure web server
+  hosts: ngx-webserver
+  become: true
+  # vars_files:
+  #   - vault/sudo_password.yml   # Подключаем зашифрованный файл Vault
+
+
+  roles:
+    - role: install-nginx
+    - role: prepare-disk
+    - role: configure-firewall

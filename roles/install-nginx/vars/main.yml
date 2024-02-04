@@ -1,0 +1,3 @@
+nginx_registry_url: "https://example.com/registry"
+nginx_user: "nginx"  # Пользователь
+nginx_conf_dir: "/etc/nginx"  # Путь к каталогу конфигурации

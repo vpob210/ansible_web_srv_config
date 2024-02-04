@@ -1,0 +1,110 @@
+# - name: configure-firewall
+#   hosts: ngx-webserver
+#   become: true
+# #  vars_files:
+# #    - password.yml
+
+#   tasks:
+    - name: Check OS distribution
+      setup:
+        filter: ansible_distribution
+
+    - block:
+        - name: Configure firewall on CentOS
+          yum:
+            name: firewalld
+            state: present
+
+        - name: Enable firewalld on CentOS
+          service:
+            name: firewalld
+            state: started
+            enabled: yes
+
+        - name: Allow established connections on CentOS
+          firewalld:
+            zone: public
+            permanent: yes
+            state: enabled
+            service: 'ssh'
+
+        # - name: Allow incoming SSH connections from specific IP on CentOS
+        #   firewalld:
+        #     zone: public
+        #     service: ssh
+        #     permanent: yes
+        #     state: enabled
+        #     immediate: yes
+        #     rich_rule: 'rule family="ipv4" source address="{{ item }}" port="22" protocol="tcp" accept'
+          
+        - name: Allow SSH connections from specific IP addresses using firewalld
+          firewalld:
+            service: ssh
+            zone: public
+            permanent: yes
+            state: enabled
+            source: '46.22.211.104/32'
+          become: yes
+
+        - name: Allow incoming HTTP connections on CentOS
+          firewalld:
+            zone: public
+            permanent: yes
+            state: enabled
+            service: 'http'
+            immediate: yes
+
+        - name: Allow incoming HTTPS connections on CentOS
+          firewalld:
+            zone: public
+            permanent: yes
+            state: enabled
+            service: 'https'
+            immediate: yes
+
+        - name: Drop all other incoming connections on CentOS
+          firewalld:
+            zone: public
+            permanent: yes
+            state: enabled
+            source: '0.0.0.0/0'
+            action: drop
+            immediate: yes
+
+      when: ansible_distribution == 'CentOS'
+
+    - block:
+        
+        - name: Configure firewall on Ubuntu
+          ufw:
+            state: enabled
+
+        - name: Allow SSH connections from specific IPs on Ubuntu
+          ufw:
+            rule: allow
+            src: "{{ item }}"
+            port: 22
+          loop:
+            - 10.10.10.10
+            - 46.22.211.104
+
+        - name: Allow incoming HTTP connections on Ubuntu
+          ufw:
+            rule: allow
+            port: 80
+
+        - name: Allow incoming HTTPS connections on Ubuntu
+          ufw:
+            rule: allow
+            port: 443
+
+        - name: Deny all other incoming connections on Ubuntu
+          ufw:
+            rule: deny
+
+        - name:
+          debug:
+            msg: "hi"
+      
+      when: ansible_distribution == 'Ubuntu'
+      
