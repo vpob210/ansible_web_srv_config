@@ -1,10 +1,4 @@
-# - name: configure-firewall
-#   hosts: ngx-webserver
-#   become: true
-# #  vars_files:
-# #    - password.yml
-
-#   tasks:
+---
     - name: Check OS distribution
       setup:
         filter: ansible_distribution
@@ -21,32 +15,18 @@
             state: started
             enabled: yes
 
-        - name: Allow established connections on CentOS
-          firewalld:
-            zone: public
-            permanent: yes
-            state: enabled
-            service: 'ssh'
 
-        # - name: Allow incoming SSH connections from specific IP on CentOS
-        #   firewalld:
-        #     zone: public
-        #     service: ssh
-        #     permanent: yes
-        #     state: enabled
-        #     immediate: yes
-        #     rich_rule: 'rule family="ipv4" source address="{{ item }}" port="22" protocol="tcp" accept'
-          
-        - name: Allow SSH connections from specific IP addresses using firewalld
+        - name: Allow incoming SSH connections from specific IP on CentOS
           firewalld:
-            service: ssh
             zone: public
             permanent: yes
             state: enabled
-            source: '46.22.211.104/32'
+            rich_rule: 'rule family="ipv4" source address="{{ item }}" port port="22" protocol="tcp" accept'
+          loop:
+              - 10.10.10.10/32
           become: yes
 
-        - name: Allow incoming HTTP connections on CentOS
+        - name: Allow incoming HTTP on CentOS
           firewalld:
             zone: public
             permanent: yes
@@ -54,7 +34,7 @@
             service: 'http'
             immediate: yes
 
-        - name: Allow incoming HTTPS connections on CentOS
+        - name: Allow incoming HTTPS on CentOS
           firewalld:
             zone: public
             permanent: yes
@@ -62,14 +42,22 @@
             service: 'https'
             immediate: yes
 
-        - name: Drop all other incoming connections on CentOS
+        - name: Disable global SSH connections on CentOS
           firewalld:
             zone: public
             permanent: yes
-            state: enabled
-            source: '0.0.0.0/0'
-            action: drop
+            state: disabled
+            service: 'ssh'
             immediate: yes
+
+        - name: Bounce firewalld
+          systemd:
+            name: firewalld
+            state: restarted
+          become: yes
+
+        # - name: Reboot the system
+        #   reboot:
 
       when: ansible_distribution == 'CentOS'
 
@@ -86,7 +74,6 @@
             port: 22
           loop:
             - 10.10.10.10
-            - 46.22.211.104
 
         - name: Allow incoming HTTP connections on Ubuntu
           ufw:
@@ -102,9 +89,61 @@
           ufw:
             rule: deny
 
-        - name:
-          debug:
-            msg: "hi"
       
       when: ansible_distribution == 'Ubuntu'
+
+
+###   ДЛЯ IPTABLES черновик ###
+
+  #   - name: Install iptables-persistent package
+  #     apt:
+  #       name: iptables-persistent
+  #       state: present
+
+  #   - name: Allow established connections
+  #     iptables:
+  #       chain: INPUT
+  #       match: state
+  #       state: RELATED,ESTABLISHED
+  #       jump: ACCEPT
+  #     notify: Save iptables rules
+
+  #   - name: Allow incoming SSH connections from specific IP
+  #     iptables:
+  #       chain: INPUT
+  #       protocol: tcp
+  #       port: 22
+  #       source: 10.10.10.10
+  #       jump: ACCEPT
+  #     notify: Save iptables rules
+
+  #   - name: Allow incoming HTTP and HTTPS connections
+  #     iptables:
+  #       chain: INPUT
+  #       protocol: tcp
+  #       destination_port: "{{ item }}"
+  #       jump: ACCEPT
+  #     loop:
+  #       - 80
+  #       - 443
+  #     notify: Save iptables rules
+
+  #   - name: Правило для глобальной цепочки
+  #     iptables:
+  #       chain: INPUT
+  #       policy: DROP
+  #     notify: Save iptables rules
+
+  #   - name: Отбрасывать все остальные соеденения
+  #     iptables:
+  #       chain: INPUT
+  #       jump: DROP
+  #     notify: Save iptables rules
+
+  # handlers:
+  #   - name: Save iptables rules
+  #     service:
+  #       name: netfilter-persistent
+  #       state: restarted
+
       

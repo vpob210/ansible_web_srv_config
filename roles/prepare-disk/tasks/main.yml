@@ -1,11 +1,4 @@
-# - name: prepare-disk
-#   hosts: ngx-webserver
-#   become: true
-# #  vars_files:
-# #    - password.yml
-
-
-  # tasks:
+---
     - name: Получить имена дисков
       shell: lsblk -n -o NAME,TYPE | grep 'disk' | awk '{print $1}'
       register: disk_names
